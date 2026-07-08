@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>self-healing-bot — incident console</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --bg: #0B0E11;
+    --panel: #12161B;
+    --border: #232A31;
+    --text: #E5E7EB;
+    --muted: #7C8792;
+    --safe: #34D399;
+    --review: #FBBF24;
+    --cyan: #5EEAD4;
+    --amber: #FFB86B;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+  }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+
+  .titlebar{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 16px; border-bottom:1px solid var(--border);
+    background:var(--panel);
+  }
+  .dot{width:10px;height:10px;border-radius:50%;}
+  .dot.r{background:#FF5F56;} .dot.y{background:#FFBD2E;} .dot.g{background:#27C93F;}
+  .titlebar span{color:var(--muted); font-size:13px; margin-left:8px;}
+  .titlebar .path{color:var(--text);}
+
+  .wrap{ max-width:1100px; margin:0 auto; padding:28px 20px 60px; }
+
+  .header{ margin-bottom:24px; }
+  .header h1{
+    font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:700;
+    margin:0 0 4px; letter-spacing:-0.02em;
+  }
+  .header h1 .prompt{ color:var(--cyan); }
+  .header p{ color:var(--muted); font-size:13px; margin:0; }
+
+  .stats{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
+    margin-bottom:28px;
+  }
+  .stat{
+    background:var(--panel); border:1px solid var(--border); border-radius:6px;
+    padding:14px 16px;
+  }
+  .stat .n{ font-family:'JetBrains Mono',monospace; font-size:24px; font-weight:700; }
+  .stat .l{ color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; margin-top:2px; }
+  .stat.safe .n{ color:var(--safe); }
+  .stat.review .n{ color:var(--review); }
+  .stat.cyan .n{ color:var(--cyan); }
+
+  .log{ border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+  .row{
+    border-bottom:1px solid var(--border); background:var(--panel);
+    cursor:pointer; transition:background 0.12s;
+  }
+  .row:last-child{ border-bottom:none; }
+  .row:hover{ background:#161B21; }
+  .row-head{
+    display:grid; grid-template-columns:120px 1fr 130px 100px 90px;
+    gap:12px; align-items:center; padding:12px 16px;
+  }
+  .time{ color:var(--muted); font-size:12px; }
+  .pod{ font-family:'JetBrains Mono',monospace; font-size:13px; }
+  .pod .ns{ color:var(--muted); }
+  .reason{ font-size:12px; color:var(--muted); margin-top:2px; }
+  .badge{
+    font-size:11px; padding:3px 8px; border-radius:3px; text-align:center;
+    font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:0.04em;
+  }
+  .badge.safe{ background:rgba(52,211,153,0.12); color:var(--safe); }
+  .badge.needs_review{ background:rgba(251,191,36,0.12); color:var(--review); }
+  .conf{ font-size:11px; color:var(--muted); text-align:center; }
+  .action{ font-size:11px; text-align:right; padding-right:4px; }
+  .action.applied{ color:var(--cyan); }
+  .action.pending{ color:var(--review); }
+
+  .detail{
+    display:none; padding:0 16px 16px 16px; border-top:1px solid var(--border);
+    background:#0E1216;
+  }
+  .row.open .detail{ display:block; }
+  .detail-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px; }
+  .detail h4{
+    font-size:10px; text-transform:uppercase; letter-spacing:0.08em;
+    color:var(--muted); margin:0 0 6px;
+  }
+  .detail p{ font-size:13px; line-height:1.5; margin:0 0 12px; color:var(--text); }
+  .cmd{
+    font-family:'JetBrains Mono',monospace; font-size:12px; background:#000;
+    border:1px solid var(--border); border-radius:4px; padding:8px 10px;
+    color:var(--cyan); overflow-x:auto; white-space:pre;
+  }
+
+  .footer{
+    margin-top:20px; font-family:'JetBrains Mono',monospace; font-size:12px;
+    color:var(--muted); display:flex; align-items:center; gap:8px;
+  }
+  .cursor{
+    width:7px; height:14px; background:var(--cyan);
+    animation:blink 1s step-end infinite;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+  <span class="path mono">~/self-healing-bot</span><span>— dashboard preview</span>
+</div>
+
+<div class="wrap">
+  <div class="header">
+    <h1><span class="prompt">$</span> incident_console --namespace self-healing-demo</h1>
+    <p>LLM-assisted remediation history · sample data for preview — connect to /api/alerts for live view</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="stat-total">0</div><div class="l">Total Alerts</div></div>
+    <div class="stat safe"><div class="n" id="stat-safe">0</div><div class="l">Auto-Fixed</div></div>
+    <div class="stat review"><div class="n" id="stat-review">0</div><div class="l">Needs Review</div></div>
+    <div class="stat cyan"><div class="n" id="stat-conf">0%</div><div class="l">High Confidence</div></div>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <div class="footer">
+    <div class="cursor"></div>
+    <span id="watching-line">watching self-healing-demo for pod failures...</span>
+  </div>
+</div>
+
+<script>
+const sampleData = [
+  {
+    time: 1751870400, pod: "demo-app-7d9f8c-x2k1p", namespace: "self-healing-demo",
+    reason: "OOMKilled", root_cause: "Container memory limit (10Mi) is far below nginx's baseline footprint, causing immediate OOM kill on startup.",
+    confidence: "high", risk_level: "safe", action_type: "patch_memory",
+    kubectl_command: "kubectl patch deployment demo-app -n self-healing-demo --patch '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"nginx\",\"resources\":{\"limits\":{\"memory\":\"128Mi\"}}}]}}}}'",
+    explanation: "Raising the memory limit to 128Mi gives nginx enough headroom for its worker processes without over-provisioning.",
+    applied: true
+  },
+  {
+    time: 1751866800, pod: "payments-worker-5c7b9-mm3q2", namespace: "self-healing-demo",
+    reason: "CrashLoopBackOff", root_cause: "Missing DATABASE_URL environment variable causes the app to exit on boot.",
+    confidence: "high", risk_level: "needs_review", action_type: "manual",
+    kubectl_command: "kubectl set env deployment/payments-worker DATABASE_URL=<redacted> -n self-healing-demo",
+    explanation: "Injecting the secret automatically is risky without knowing the correct value, so this is routed to a human for approval.",
+    applied: false
+  },
+  {
+    time: 1751863200, pod: "auth-service-9f2d1-plq8r", namespace: "self-healing-demo",
+    reason: "ImagePullBackOff", root_cause: "Deployment references image tag 'v2.4.1' which was never pushed to Docker Hub — likely a typo from 'v2.1.4'.",
+    confidence: "medium", risk_level: "needs_review", action_type: "patch_image",
+    kubectl_command: "kubectl set image deployment/auth-service auth=arasakumar786/auth-service:v2.1.4 -n self-healing-demo",
+    explanation: "Correcting the tag should resolve the pull error, but confirming the intended version needs a human check.",
+    applied: false
+  },
+  {
+    time: 1751859600, pod: "demo-app-7d9f8c-h7v2t", namespace: "self-healing-demo",
+    reason: "CrashLoopBackOff", root_cause: "Transient restart caused by a liveness probe timeout during a brief node CPU spike.",
+    confidence: "high", risk_level: "safe", action_type: "restart",
+    kubectl_command: "kubectl delete pod demo-app-7d9f8c-h7v2t -n self-healing-demo",
+    explanation: "A simple restart resolves transient probe failures with no underlying config issue detected.",
+    applied: true
+  },
+  {
+    time: 1751856000, pod: "cache-redis-3b8e0-k9d4x", namespace: "self-healing-demo",
+    reason: "OOMKilled", root_cause: "Redis maxmemory setting exceeds the pod's memory limit, guaranteeing an eventual OOM kill under load.",
+    confidence: "high", risk_level: "safe", action_type: "patch_memory",
+    kubectl_command: "kubectl patch deployment cache-redis -n self-healing-demo --patch '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"redis\",\"resources\":{\"limits\":{\"memory\":\"512Mi\"}}}]}}}}'",
+    explanation: "Aligning the pod memory limit above Redis's configured maxmemory prevents the OS from killing the process.",
+    applied: true
+  }
+];
+
+function timeAgo(ts){
+  const diff = Math.floor(Date.now()/1000) - ts;
+  const h = Math.floor(diff/3600);
+  if(h < 1) return Math.floor(diff/60) + "m ago";
+  if(h < 24) return h + "h ago";
+  return Math.floor(h/24) + "d ago";
+}
+
+function render(data){
+  const total = data.length;
+  const safeCount = data.filter(d => d.risk_level === "safe").length;
+  const reviewCount = data.filter(d => d.risk_level === "needs_review").length;
+  const highConf = Math.round(100 * data.filter(d => d.confidence === "high").length / total);
+
+  document.getElementById("stat-total").textContent = total;
+  document.getElementById("stat-safe").textContent = safeCount;
+  document.getElementById("stat-review").textContent = reviewCount;
+  document.getElementById("stat-conf").textContent = highConf + "%";
+
+  const log = document.getElementById("log");
+  log.innerHTML = "";
+
+  data.forEach((d, i) => {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `
+      <div class="row-head">
+        <div class="time mono">${timeAgo(d.time)}</div>
+        <div>
+          <div class="pod">${d.pod} <span class="ns">· ${d.reason}</span></div>
+        </div>
+        <div class="badge ${d.risk_level}">${d.risk_level.replace('_',' ')}</div>
+        <div class="conf mono">${d.confidence} conf</div>
+        <div class="action ${d.applied ? 'applied' : 'pending'} mono">${d.applied ? '✓ applied' : '○ pending'}</div>
+      </div>
+      <div class="detail">
+        <div class="detail-grid">
+          <div>
+            <h4>Root Cause</h4>
+            <p>${d.root_cause}</p>
+            <h4>Why This Fix</h4>
+            <p>${d.explanation}</p>
+          </div>
+          <div>
+            <h4>Suggested Command</h4>
+            <div class="cmd">${d.kubectl_command}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    row.addEventListener("click", () => row.classList.toggle("open"));
+    log.appendChild(row);
+  });
+}
+
+// Attempt live fetch, fall back to sample data
+fetch("/api/alerts").then(r => r.json()).then(data => {
+  render(data.length ? data.map(d => ({...d, applied: d.action_type !== 'manual' && d.risk_level === 'safe'})) : sampleData);
+}).catch(() => render(sampleData));
+</script>
+
+</body>
+</html>

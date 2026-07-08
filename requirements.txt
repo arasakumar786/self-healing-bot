@@ -1,0 +1,6 @@
+kubernetes
+anthropic
+requests
+python-dotenv
+fastapi
+uvicorn

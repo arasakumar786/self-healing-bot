@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: self-healing-bot
+  namespace: self-healing-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: self-healing-bot}
+  template:
+    metadata:
+      labels: {app: self-healing-bot}
+    spec:
+      serviceAccountName: self-healing-bot
+      containers:
+      - name: bot
+        image: arasakumar786/self-healing-bot:v1
+        envFrom:
+        - secretRef:
+            name: bot-secrets

@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: self-healing-bot
+  namespace: self-healing-demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: self-healing-role
+  namespace: self-healing-demo
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log", "events"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: self-healing-binding
+  namespace: self-healing-demo
+subjects:
+- kind: ServiceAccount
+  name: self-healing-bot
+  namespace: self-healing-demo
+roleRef:
+  kind: Role
+  name: self-healing-role
+  apiGroup: rbac.authorization.k8s.io
