@@ -1,8 +1,8 @@
 from kubernetes import client
 
-v1 = client.CoreV1Api()
-
 def collect_context(pod, namespace):
+    v1 = client.CoreV1Api()   # 🔧 moved here — now created AFTER config is loaded
+
     logs = ""
     try:
         logs = v1.read_namespaced_pod_log(

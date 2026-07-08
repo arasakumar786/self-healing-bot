@@ -21,10 +21,13 @@ def watch_pod_failures(namespace="self-healing-demo"):
                     handle_failure(pod, "OOMKilled", namespace)
 
 def handle_failure(pod, reason, namespace):
-    print(f"Detected {reason} on pod {pod.metadata.name}")
-    context = collect_context(pod, namespace)
-    diagnosis = ask_llm(context, reason)
-    remediate(diagnosis, pod, namespace, reason)
+    try:
+        print(f"Detected {reason} on pod {pod.metadata.name}")
+        context = collect_context(pod, namespace)
+        diagnosis = ask_llm(context, reason)
+        remediate(diagnosis, pod, namespace, reason)
+    except Exception as e:
+        print(f"Error handling failure for {pod.metadata.name}: {e}")
 
 if __name__ == "__main__":
     watch_pod_failures()
