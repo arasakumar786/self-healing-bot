@@ -12,9 +12,52 @@ spec:
       labels: {app: self-healing-bot}
     spec:
       serviceAccountName: self-healing-bot
+      volumes:
+      - name: shared-data
+        emptyDir: {}
       containers:
       - name: bot
         image: arasakumar786/self-healing-bot:v1
+        imagePullPolicy: Always
+        command: ["python", "watcher.py"]
         envFrom:
         - secretRef:
             name: bot-secrets
+        volumeMounts:
+        - name: shared-data
+          mountPath: /app/data
+      - name: dashboard
+        image: arasakumar786/self-healing-bot:v1
+        imagePullPolicy: Always
+        command: ["python", "-m", "uvicorn", "dashboard.app:app", "--host", "0.0.0.0", "--port", "8000"]
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - secretRef:
+            name: bot-secrets
+        volumeMounts:
+        - name: shared-data
+          mountPath: /app/data
+      - name: node-watcher
+        image: arasakumar786/self-healing-bot:v1
+        imagePullPolicy: Always
+        command: ["python", "node_watcher.py"]
+        envFrom:
+        - secretRef:
+            name: bot-secrets
+        volumeMounts:
+        - name: shared-data
+          mountPath: /app/data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: self-healing-dashboard-svc
+  namespace: self-healing-demo
+spec:
+  selector:
+    app: self-healing-bot
+  ports:
+  - port: 80
+    targetPort: 8000
+  type: LoadBalancer

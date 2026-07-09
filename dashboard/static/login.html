@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AutoHeal — Sign In</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap');
+  body{margin:0;background:#0B0E11;color:#E5E7EB;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;}
+  .card{background:#12161B;border:1px solid #232A31;border-radius:8px;padding:32px;width:320px;}
+  h1{font-family:'JetBrains Mono',monospace;font-size:18px;margin:0 0 4px;}
+  p{color:#7C8792;font-size:13px;margin:0 0 24px;}
+  input{width:100%;padding:10px;margin-bottom:12px;background:#0B0E11;border:1px solid #232A31;border-radius:4px;color:#E5E7EB;font-family:'JetBrains Mono',monospace;font-size:13px;}
+  button{width:100%;padding:10px;background:#5EEAD4;color:#0B0E11;border:none;border-radius:4px;font-weight:600;cursor:pointer;font-family:'JetBrains Mono',monospace;}
+  .error{color:#F87171;font-size:12px;margin-top:8px;display:none;}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>$ AutoHeal login</h1>
+  <p>Sign in to view the incident console</p>
+  <input type="text" id="username" placeholder="username">
+  <input type="password" id="password" placeholder="password">
+  <button onclick="login()">Sign In</button>
+  <div class="error" id="error">Invalid username or password</div>
+</div>
+<script>
+async function login(){
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username, password})
+  });
+  if(res.ok){
+    const data = await res.json();
+    localStorage.setItem('autoheal_token', data.token);
+    localStorage.setItem('autoheal_user', data.username);
+    window.location.href = '/index.html';
+  } else {
+    document.getElementById('error').style.display = 'block';
+  }
+}
+document.addEventListener('keydown', e => { if(e.key === 'Enter') login(); });
+</script>
+</body>
+</html>

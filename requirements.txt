@@ -4,3 +4,5 @@ requests
 python-dotenv
 fastapi
 uvicorn
+pyjwt
+bcrypt

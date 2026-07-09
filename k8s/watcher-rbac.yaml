@@ -14,7 +14,7 @@ rules:
   resources: ["pods", "pods/log", "events"]
   verbs: ["get", "list", "watch"]
 - apiGroups: ["apps"]
-  resources: ["deployments"]
+  resources: ["deployments", "replicasets"]
   verbs: ["get", "list", "watch", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -29,4 +29,26 @@ subjects:
 roleRef:
   kind: Role
   name: self-healing-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: self-healing-node-reader
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: self-healing-node-reader-binding
+subjects:
+- kind: ServiceAccount
+  name: self-healing-bot
+  namespace: self-healing-demo
+roleRef:
+  kind: ClusterRole
+  name: self-healing-node-reader
   apiGroup: rbac.authorization.k8s.io
